@@ -356,13 +356,13 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
 
         Need to be one of CURRENT_HVAC_*.
         """
-        if self._is_cooler_active:
+        if self._is_cooler_active and self._hvac_mode in [HVACMode.COOL, HVACMode.HEAT_COOL]:
             return HVACAction.COOLING
-        if self._is_heater_active:
+        if self._is_heater_active and self._hvac_mode in [HVACMode.HEAT, HVACMode.HEAT_COOL]:
             return HVACAction.HEATING
-        if self._is_fan_active:
+        if self._is_fan_active and self._hvac_mode in [HVACMode.FAN_ONLY]:
             return HVACAction.FAN
-        if self._hvac_mode == HVACMode.OFF:
+        if self._hvac_mode in [HVACMode.OFF]:
             return HVACAction.OFF
         return HVACAction.IDLE
 
@@ -402,6 +402,7 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
         if (temperature := kwargs.get(ATTR_TEMPERATURE)) is None:
             return
         self._target_temp = temperature
+
         await self._async_control_heating(force=True)
         self.async_write_ha_state()
 
