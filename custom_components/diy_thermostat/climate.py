@@ -124,6 +124,7 @@ async def async_setup_platform(
     unique_id = config.get(CONF_UNIQUE_ID)
     heater_entity_id = config.get(CONF_HEATER)
     cooler_entity_id = config.get(CONF_COOLER)
+    fan_entity_id = config.get(CONF_FAN)
     sensor_entity_id = config.get(CONF_SENSOR)
     min_temp = config.get(CONF_MIN_TEMP)
     max_temp = config.get(CONF_MAX_TEMP)
@@ -146,6 +147,7 @@ async def async_setup_platform(
                 name,
                 heater_entity_id,
                 cooler_entity_id,
+                fan_entity_id,
                 sensor_entity_id,
                 min_temp,
                 max_temp,
@@ -175,6 +177,7 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
         name,
         heater_entity_id,
         cooler_entity_id,
+        fan_entity_id,
         sensor_entity_id,
         min_temp,
         max_temp,
@@ -194,6 +197,7 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
         self._attr_name = name
         self.heater_entity_id = heater_entity_id
         self.cooler_entity_id = cooler_entity_id
+        self.fan_entity_id = fan_entity_id
         self.sensor_entity_id = sensor_entity_id
         self.min_cycle_duration = min_cycle_duration
         self._cold_tolerance = cold_tolerance
