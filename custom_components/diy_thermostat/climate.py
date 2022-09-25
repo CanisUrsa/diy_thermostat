@@ -268,13 +268,19 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
                 STATE_UNAVAILABLE,
                 STATE_UNKNOWN,
             ):
-                self.hass.create_task(self._check_heater_switch_initial_state())
+                self.hass.create_task(self._check_switch_heater_initial_state())
             cooler_switch_state = self.hass.states.get(self.cooler_entity_id)
             if cooler_switch_state and switch_state.state not in (
                 STATE_UNAVAILABLE,
                 STATE_UNKNOWN,
             ):
-                self.hass.create_task(self._check_cooler_switch_initial_state())
+                self.hass.create_task(self._check_switch_cooler_initial_state())
+            fan_switch_state = self.hass.states.get(self.fan_entity_id)
+            if fan_switch_state and switch_state.state not in (
+                STATE_UNAVAILABLE,
+                STATE_UNKNOWN,
+            ):
+                self.hass.create_task(self._check_switch_fan_initial_state())
 
         if self.hass.state == CoreState.running:
             _async_startup()
@@ -422,15 +428,31 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
         await self._async_control_heating()
         self.async_write_ha_state()
 
-    async def _check_switch_initial_state(self):
+    async def _check_switch_heater_initial_state(self):
         """Prevent the device from keep running if HVACMode.OFF."""
-        if self._hvac_mode == HVACMode.OFF and self._is_device_active:
+        if self._hvac_mode == HVACMode.OFF and self._is_heater_active:
             _LOGGER.warning(
                 "The climate mode is OFF, but the switch device is ON. Turning off device %s",
                 self.heater_entity_id,
             )
             await self._async_heater_turn_off()
+
+    async def _check_switch_cooler_initial_state(self):
+        """Prevent the device from keep running if HVACMode.OFF."""
+        if self._hvac_mode == HVACMode.OFF and self._is_cooler_active:
+            _LOGGER.warning(
+                "The climate mode is OFF, but the switch device is ON. Turning off device %s",
+                self.cooler_entity_id,
+            )
             await self._async_cooler_turn_off()
+    
+    async def _check_switch_fan_initial_state(self):
+        """Prevent the device from keep running if HVACMode.OFF."""
+        if self._hvac_mode == HVACMode.OFF and self._is_fan_active:
+            _LOGGER.warning(
+                "The climate mode is OFF, but the switch device is ON. Turning off device %s",
+                self.fan_entity_id,
+            )
             await self._async_fan_turn_off()
     
     @callback
