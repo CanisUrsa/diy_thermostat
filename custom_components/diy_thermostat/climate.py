@@ -381,7 +381,7 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
             self._hvac_mode = hvac_mode
             await self._async_control_heating(force=True)
         elif hvac_mode == HVACMode.HEAT_COOL:
-            self.hvac_mode = hvac_mode
+            self._hvac_mode = hvac_mode
             await self._async_control_heating(force=True)
         elif hvac_mode == HVACMode.FAN_ONLY:
             self._hvac_mode = hvac_mode
