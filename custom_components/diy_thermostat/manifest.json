@@ -2,7 +2,8 @@
   "domain": "diy_thermostat",
   "name": "DIY Thermostat",
   "documentation": "https://www.home-assistant.io/integrations/generic_thermostat",
-  "dependencies": ["sensor", "switch"],
-  "codeowners": [],
-  "iot_class": "local_polling"
+  "version": "0.1",
+  "dependencies": [],
+  "codeowners": ["@canisura"],
+  "requirements": []
 }

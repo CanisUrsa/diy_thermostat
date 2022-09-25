@@ -341,13 +341,15 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
 
         Need to be one of CURRENT_HVAC_*.
         """
+        if self._is_cooler_active:
+            return HVACAction.COOLING
+        if self._is_heater_active:
+            return HVACAction.HEATING
+        if self._is_fan_active:
+            return HVACAction.FAN
         if self._hvac_mode == HVACMode.OFF:
             return HVACAction.OFF
-        if not self._is_device_active:
-            return HVACAction.IDLE
-        if self.ac_mode:
-            return HVACAction.COOLING
-        return HVACAction.HEATING
+        return HVACAction.IDLE
 
     @property
     def target_temperature(self):
@@ -356,16 +358,24 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set hvac mode."""
-        if hvac_mode == HVACMode.HEAT:
-            self._hvac_mode = HVACMode.HEAT
-            await self._async_control_heating(force=True)
-        elif hvac_mode == HVACMode.COOL:
-            self._hvac_mode = HVACMode.COOL
-            await self._async_control_heating(force=True)
-        elif hvac_mode == HVACMode.OFF:
-            self._hvac_mode = HVACMode.OFF
+        if hvac_mode == HVACMode.OFF:
+            self._hvac_mode = hvac_mode
             if self._is_device_active:
                 await self._async_heater_turn_off()
+                await self._async_cooler_turn_off()
+                await self._async_fan_turn_off()
+        elif hvac_mode == HVACMode.HEAT:
+            self._hvac_mode = hvac_mode
+            await self._async_control_heating(force=True)
+        elif hvac_mode == HVACMode.COOL:
+            self._hvac_mode = hvac_mode
+            await self._async_control_heating(force=True)
+        elif hvac_mode == HVACMode.HEAT_COOL:
+            self.hvac_mode = hvac_mode
+            await self._async_control_heating(force=True)
+        elif hvac_mode == HVACMode.FAN_ONLY:
+            self._hvac_mode = hvac_mode
+            await self._async_control_heating(force=True)
         else:
             _LOGGER.error("Unrecognized hvac mode: %s", hvac_mode)
             return
@@ -501,10 +511,13 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
                     _LOGGER.info("Turning on heater %s", self.heater_entity_id)
                     await self._async_fan_turn_on()
                     await self._async_heater_turn_on()
+                elif self._hvac_mode == HVACMode.FAN_ONLY:
+                    _LOGGER.info("Turning on fan %s", self.fan_entity_id)
+                    await self._async_fan_turn_on()
 
     @property
     def _is_device_active(self):
-        return self._is_heater_active() or self._is_cooler_active()
+        return self._is_heater_active or self._is_cooler_active or self._is_fan_active
     
     @property
     def _is_heater_active(self):
@@ -521,6 +534,14 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
             return None
 
         return self.hass.states.is_state(self.cooler_entity_id, STATE_ON)
+    
+    @property
+    def _is_fan_active(self):
+        """If the fan device is currently active."""
+        if not self.hass.states.get(self.fan_entity_id):
+            return None
+        
+        return self.hass.states.is_state(self.fan_entity_id, STATE_ON)
 
     async def _async_heater_turn_on(self):
         """Turn heater toggleable device on."""
