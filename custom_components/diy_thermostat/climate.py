@@ -237,12 +237,17 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
         )
         self.async_on_remove(
             async_track_state_change_event(
-                self.hass, [self.heater_entity_id], self._async_switch_changed
+                self.hass, [self.heater_entity_id], self._async_switch_heater_changed
             )
         )
         self.async_on_remove(
             async_track_state_change_event(
-                self.hass, [self.cooler_entity_id], self._async_switch_changed
+                self.hass, [self.cooler_entity_id], self._async_switch_cooler_changed
+            )
+        )
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, [self.fan_entity_id], self._async_switch_fan_changed
             )
         )
 
@@ -456,14 +461,36 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
             await self._async_fan_turn_off()
     
     @callback
-    def _async_switch_changed(self, event):
+    def _async_switch_heater_changed(self, event):
         """Handle heater switch state changes."""
         new_state = event.data.get("new_state")
         old_state = event.data.get("old_state")
         if new_state is None:
             return
         if old_state is None:
-            self.hass.create_task(self._check_switch_initial_state())
+            self.hass.create_task(self._check_switch_heater_initial_state())
+        self.async_write_ha_state()
+    
+    @callback
+    def _async_switch_cooler_changed(self, event):
+        """Handle cooler switch state changes."""
+        new_state = event.data.get("new_state")
+        old_state = event.data.get("old_state")
+        if new_state is None:
+            return
+        if old_state is None:
+            self.hass.create_task(self._check_switch_cooler_initial_state())
+        self.async_write_ha_state()
+    
+    @callback
+    def _async_switch_fan_changed(self, event):
+        """Handle fan switch state changes."""
+        new_state = event.data.get("new_state")
+        old_state = event.data.get("old_state")
+        if new_state is None:
+            return
+        if old_state is None:
+            self.hass.create_task(self._check_switch_fan_initial_state())
         self.async_write_ha_state()
 
     @callback
