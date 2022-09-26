@@ -551,27 +551,48 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
 
             too_cold = self._cur_temp <= self._target_temp - self._cold_tolerance
             too_hot = self._cur_temp >= self._target_temp + self._hot_tolerance
-            if self._is_device_active:
-                if self._is_heater_active and not too_cold:
-                    _LOGGER.info("Turning off heater %s", self.heater_entity_id)
-                    await self._async_heater_turn_off()
-                    await self._async_fan_turn_off()
-                elif self._is_cooler_active and not too_hot:
+            is_cooler_active = self._is_cooler_active
+            is_heater_active = self._is_heater_active
+            is_fan_active = self._is_fan_active
+            if self._hvac_mode == HVACMode.COOL:
+                if is_cooler_active and not too_hot:
                     _LOGGER.info("Turning off cooler %s", self.cooler_entity_id)
                     await self._async_cooler_turn_off()
                     await self._async_fan_turn_off()
-            else:
-                if too_hot and self._hvac_mode in (HVACMode.COOL, HVACMode.HEAT_COOL):
+                elif too_hot:
                     _LOGGER.info("Turning on cooler %s", self.cooler_entity_id)
-                    await self._async_fan_turn_on()
                     await self._async_cooler_turn_on()
-                elif too_cold and self._hvac_mode in (HVACMode.HEAT, HVACMode.HEAT_COOL):
+                    await self._async_fan_turn_on()
+            elif self._hvac_mode == HVACMode.HEAT:
+                if is_heater_active and not too_cold:
+                    _LOGGER.info("Turning off heater %s", self.heater_entity_id)
+                    await self._async_heater_turn_off()
+                    await self._async_fan_turn_off()
+                elif too_cold:
                     _LOGGER.info("Turning on heater %s", self.heater_entity_id)
-                    await self._async_fan_turn_on()
                     await self._async_heater_turn_on()
-                elif self._hvac_mode == HVACMode.FAN_ONLY:
-                    _LOGGER.info("Turning on fan %s", self.fan_entity_id)
                     await self._async_fan_turn_on()
+            elif self._hvac_mode == HVACMode.HEAT_COOL:
+                if is_cooler_active and not too_hot and not too_cold:
+                    _LOGGER.info("Turning off cooler %s", self.cooler_entity_id)
+                    await self._async_cooler_turn_off()
+                    await self._async_fan_turn_off()
+                elif is_cooler_active and not too_hot and too_cold:
+                    _LOGGER.info("Turning off cooler %s and turning on heater %s", self.cooler_entity_id, self.heater_entity_id)
+                    await self._async_cooler_turn_off()
+                    await self._async_heater_turn_on()
+                elif is_heater_active and not too_cold and not too_hot:
+                    _LOGGER.info("Turning off heater %s", self.heater_entity_id)
+                    await self._async_heater_turn_off()
+                    await self._async_fan_turn_off()
+                elif is_heater_active and not too_cold and too_hot:
+                    _LOGGER.info("Turning off heater %s and turning on cooler %s", self.heater_entity_id, self.cooler_entity_id)
+                    await self._async_heater_turn_off()
+                    await self._async_cooler_turn_on()
+            elif self._hvac_mode == HVACMode.FAN_ONLY:
+                if not is_fan_active:
+                    _LOGGER.info("Turning on fan %s", self.fan_entity_id)
+                    await self._async_fan_turn_on()                
 
     @property
     def _is_device_active(self):
