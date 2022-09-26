@@ -374,27 +374,22 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set hvac mode."""
         if hvac_mode == HVACMode.OFF:
-            self._hvac_mode = hvac_mode
-            if self._is_device_active:
-                await self._async_heater_turn_off()
-                await self._async_cooler_turn_off()
-                await self._async_fan_turn_off()
+            await self._async_heater_turn_off()
+            await self._async_cooler_turn_off()
+            await self._async_fan_turn_off()
         elif hvac_mode == HVACMode.HEAT:
-            self._hvac_mode = hvac_mode
             await self._async_control_heating(force=True)
         elif hvac_mode == HVACMode.COOL:
-            self._hvac_mode = hvac_mode
             await self._async_control_heating(force=True)
         elif hvac_mode == HVACMode.HEAT_COOL:
-            self._hvac_mode = hvac_mode
             await self._async_control_heating(force=True)
         elif hvac_mode == HVACMode.FAN_ONLY:
-            self._hvac_mode = hvac_mode
             await self._async_control_heating(force=True)
         else:
             _LOGGER.error("Unrecognized hvac mode: %s", hvac_mode)
             return
         # Ensure we update the current operation after changing the mode
+        self._hvac_mode = hvac_mode
         self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -528,24 +523,33 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
             # If the `time` argument is not none, we were invoked for
             # keep-alive purposes, and `min_cycle_duration` is irrelevant.
             if not force and time is None and self.min_cycle_duration:
-                if self._is_device_active:
+                long_enough = True
+                if self._is_heater_active or self._is_cooler_active:
                     current_state = STATE_ON
                 else:
                     current_state = HVACMode.OFF
                 try:
-                    long_enough = condition.state(
-                        self.hass,
-                        self.heater_entity_id,
-                        current_state,
-                        self.min_cycle_duration,
-                    )
+                    if self._is_heater_active:
+                        long_enough = condition.state(
+                            self.hass,
+                            self.heater_entity_id,
+                            current_state,
+                            self.min_cycle_duration,
+                        )
+                    elif self._is_cooler_active:
+                        long_enough = condition.state(
+                            self.hass,
+                            self.cooler_entity_id,
+                            current_state,
+                            self.min_cycle_duration,
+                        )
                 except ConditionError:
                     long_enough = False
 
                 if not long_enough:
                     return
 
-            too_cold = self._target_temp >= self._cur_temp + self._cold_tolerance
+            too_cold = self._cur_temp <= self._target_temp - self._cold_tolerance
             too_hot = self._cur_temp >= self._target_temp + self._hot_tolerance
             if self._is_device_active:
                 if self._is_heater_active and not too_cold:
