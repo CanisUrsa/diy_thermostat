@@ -390,6 +390,7 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
             return
         # Ensure we update the current operation after changing the mode
         self._hvac_mode = hvac_mode
+        await self._async_control_heating()
         self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -573,7 +574,11 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
                     await self._async_heater_turn_on()
                     await self._async_fan_turn_on()
             elif self._hvac_mode == HVACMode.HEAT_COOL:
-                if is_cooler_active and not too_hot and not too_cold:
+                if not is_cooler_active and too_hot:
+                    _LOGGER.info("Turning on cooler %s", self.cooler_entity_id)
+                    await self._async_cooler_turn_on()
+                    await self._async_fan_turn_on()
+                elif is_cooler_active and not too_hot and not too_cold:
                     _LOGGER.info("Turning off cooler %s", self.cooler_entity_id)
                     await self._async_cooler_turn_off()
                     await self._async_fan_turn_off()
@@ -581,6 +586,10 @@ class DIYThermostat(ClimateEntity, RestoreEntity):
                     _LOGGER.info("Turning off cooler %s and turning on heater %s", self.cooler_entity_id, self.heater_entity_id)
                     await self._async_cooler_turn_off()
                     await self._async_heater_turn_on()
+                elif not is_heater_active and too_cold:
+                    _LOGGER.info("Turning off heater %s", self.heater_entity_id)
+                    await self._async_heater_turn_on()
+                    await self._async_fan_turn_on()
                 elif is_heater_active and not too_cold and not too_hot:
                     _LOGGER.info("Turning off heater %s", self.heater_entity_id)
                     await self._async_heater_turn_off()
